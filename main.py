@@ -158,7 +158,7 @@ async def answer(update: Update, context):
 
     keyboard = [
         [
-            InlineKeyboardButton("🤓Следующее задание‍", callback_data=str(NEXT)),
+            InlineKeyboardButton("🤓Следующее задание‍)", callback_data=str(NEXT)),
             InlineKeyboardButton("🔎К выбору типа задания", callback_data='choose_type'),
         ]
     ]
