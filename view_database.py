@@ -7,14 +7,14 @@ app = Flask(__name__, static_url_path='/static')
 @app.route('/')
 def index():
     connections = mysql.connector.connect(
-        host='localhost',
+        host='mysql_container',
         user='root',
         password='MinMin123',
-        database='user_base'
+        database='ege'
     )
     cur = connections.cursor()
 
-    que = 'SELECT * FROM user_base'
+    que = 'SELECT * FROM ege'
     cur.execute(que)
     result = cur.fetchall()
 
