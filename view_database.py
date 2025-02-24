@@ -10,7 +10,8 @@ def index():
         host='mysql_container',
         user='root',
         password='MinMin123',
-        database='ege'
+        database='ege',
+        port=3307
     )
     cur = connections.cursor()
 
@@ -27,4 +28,4 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8080, debug=True)
+    app.run(host='127.0.0.1', debug=True)
