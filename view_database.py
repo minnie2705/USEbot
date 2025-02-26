@@ -7,7 +7,7 @@ app = Flask(__name__, static_url_path='/static')
 @app.route('/')
 def index():
     connections = mysql.connector.connect(
-        host='127.0.0.1',
+        host='127.0.0.1:3306',
         user='root',
         password='MinMin123',
         database='user_base',
