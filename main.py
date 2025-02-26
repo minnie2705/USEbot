@@ -113,7 +113,7 @@ async def next_example(update: Update, context):
         return FIRST
 
     connection = mysql.connector.connect(
-        host='127.0.0.1:3306',
+        host='mysql-container',
         user='root',
         password='MinMin123',
         database='user_base'
