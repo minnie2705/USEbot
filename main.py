@@ -1,6 +1,7 @@
+import os
 import random
 import mysql.connector
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, Update
 from telegram.ext import Application, MessageHandler, CallbackQueryHandler, CommandHandler, ConversationHandler, filters
 
 TOKEN = '7891116502:AAEyEMUVfoN5X0LY4JnkFds2v8-SMt9qhxk'
@@ -19,15 +20,33 @@ async def start(update: Update, context):
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # Создаем кнопки с командами для клавиатуры
+    menu_keyboard = [
+        [KeyboardButton("/start"), KeyboardButton("/stop")]
+    ]
+    menu_markup = ReplyKeyboardMarkup(menu_keyboard, resize_keyboard=True)
+
     await update.message.reply_text(
-        f"Приветствую! "
-        f"Я бот-помощник для подготовки к ЕГЭ по обществознанию! \n"
-        f"Выберите, что вы сейчас хотите 👇", reply_markup=reply_markup)
+        f"Приветствую! Я бот-помощник для подготовки к ЕГЭ по обществознанию! \n",
+        reply_markup=reply_markup
+    )
+    await update.message.reply_text(
+        "Используйте кнопки ниже для управления ботом.",
+        reply_markup=menu_markup
+    )
 
     print("Sent reply to /start command")
     return FIRST
 
+# Обработчик команды /stop
+async def stop(update: Update, context):
+    print("Received /stop command")
+    await update.message.reply_text(f'Всего доброго! \n'
+                                    f'Если снова захочешь решать, нажми на кнопку ниже или напиши /start.')
+    return ConversationHandler.END
 
+# Обработчик выбора типа задания
 async def choose_type(update: Update, context):
     print("Choosing task type")
     keyboard = [
@@ -43,7 +62,6 @@ async def choose_type(update: Update, context):
     )
     return TYPE_SELECTION
 
-
 async def set_task_type(update: Update, context):
     query = update.callback_query
     selected_type = int(query.data)
@@ -58,9 +76,6 @@ async def set_task_type(update: Update, context):
         ],
         [
             InlineKeyboardButton("⬅️Назад", callback_data='choose_type'),
-        ],
-        [
-            InlineKeyboardButton("🔎К выбору типа задания", callback_data='choose_type'),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -71,33 +86,20 @@ async def set_task_type(update: Update, context):
     return FIRST
 
 
-async def stop(update: Update, context):
-    print("Received /stop command")
-    keyboard = [
-        [
-            InlineKeyboardButton("Начать снова", callback_data='start_again'),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(f'Всего доброго! \n'
-                                    f'Если снова захочешь решать, нажми на кнопку ниже или напиши /start.',
-                                    reply_markup=reply_markup)
-    return ConversationHandler.END
+#async def stop(update: Update, context):
+    #print("Received /stop command")
+   # await update.message.reply_text(f'Всего доброго! \n'
+                                    #f'Если снова захочешь решать, нажми на кнопку ниже или напиши /start.')
+    #return ConversationHandler.END
 
 
 async def end(update: Update, context):
     query = update.callback_query
     await query.answer()
 
-    keyboard = [
-        [
-            InlineKeyboardButton("Начать снова", callback_data='start_again'),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+
     await query.edit_message_text(f'Всего доброго! \n'
-                                  f'Если снова захочешь решать, нажми на кнопку ниже или напиши /start.',
-                                  reply_markup=reply_markup)
+                                  f'Если снова захочешь решать, нажми на кнопку ниже или напиши /start.')
     return ConversationHandler.END
 
 
@@ -113,21 +115,21 @@ async def next_example(update: Update, context):
         return FIRST
 
     connection = mysql.connector.connect(
-        host='localhost',
+        host='host.docker.internal',
         user='root',
         password='MinMin123',
         database='user_base'
     )
     cursor = connection.cursor()
 
-    query = f'SELECT id_example FROM examples WHERE type_number = {selected_type}'
+    query = f'SELECT id_example, image_path FROM examples WHERE type_number = {selected_type}'
     cursor.execute(query)
-    ids = [row[0] for row in cursor.fetchall()]
-    if not ids:
+    rows = cursor.fetchall()
+    if not rows:
         await query.edit_message_text(f'Не найдено заданий для типа {selected_type}. Попробуйте выбрать другой тип.')
         return FIRST
 
-    N_EXAMPLE = random.choice(ids)
+    N_EXAMPLE, image_path = random.choice(rows)
 
     query = f'SELECT question, answer, right_answer FROM examples WHERE id_example = {N_EXAMPLE}'
     cursor.execute(query)
@@ -139,6 +141,21 @@ async def next_example(update: Update, context):
         question_text, ANSWER, EXPLANATION = result
         await update.callback_query.edit_message_text(f"*Задание № {N_EXAMPLE}*\n {question_text}",
                                                       parse_mode='Markdown')
+
+        if selected_type == 9 and image_path:
+            # Убираем символы новой строки и пробелы в конце пути
+            image_path = image_path.rstrip('\n')
+
+            # Путь к изображению в локальной папке 'images'
+            image_file_path = os.path.join('images', image_path)
+
+            # Проверяем существование файла перед отправкой
+            if os.path.exists(image_file_path):
+                await update.callback_query.message.reply_photo(photo=open(image_file_path, 'rb'))
+            else:
+                await update.callback_query.message.reply_text(
+                    f"Ошибка: изображение не найдено по пути: {image_file_path}")
+
         await update.callback_query.message.reply_text(f"✍ Напишите *ответ* на задание. ",
                                                        parse_mode='Markdown')
         print("Sent example question and answer request")
@@ -168,6 +185,7 @@ async def answer(update: Update, context):
     )
     return FIRST
 
+
 async def start_again(update: Update, context):
     query = update.callback_query
     await query.answer()
@@ -175,13 +193,18 @@ async def start_again(update: Update, context):
     await query.message.bot.send_message(chat_id=update.effective_chat.id, text='/start')
 
 
+async def start_button(update: Update, context):
+    # Когда нажимается кнопка /start
+    return await start(update, context)  # Перезапуск команды /start
+
+# Основная функция для запуска бота
 def main():
     print("Starting bot...")
     application = Application.builder().token(TOKEN).build()
     print("Application built...")
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[CommandHandler('start', start)],  # Для /start
         states={
             FIRST: [
                 CallbackQueryHandler(choose_type, pattern='^choose_type$'),
@@ -196,12 +219,14 @@ def main():
         per_chat=True
     )
 
+    # Добавляем обработчик кнопки /start
+    application.add_handler(CallbackQueryHandler(start_button, pattern='^/start$'))
+
     application.add_handler(conv_handler)
     print("Handler added...")
 
     application.run_polling()
     print("Bot is polling...")
-
 
 if __name__ == '__main__':
     main()

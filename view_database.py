@@ -7,15 +7,15 @@ app = Flask(__name__, static_url_path='/static')
 @app.route('/')
 def index():
     connections = mysql.connector.connect(
-        host='localhost',
+        host='host.docker.internal',
         user='root',
         password='MinMin123',
         database='user_base',
-        port=3306
+        port=3307
     )
     cur = connections.cursor()
 
-    que = 'SELECT * FROM ege'
+    que = 'SELECT * FROM user_base'
     cur.execute(que)
     result = cur.fetchall()
 
@@ -28,4 +28,4 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', debug=True)
+    app.run(debug=True)
